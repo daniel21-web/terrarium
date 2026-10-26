@@ -87,6 +87,13 @@ button{font:inherit;color:inherit}
 .ghost{height:42px;border-radius:21px;border:1px solid var(--line);background:none;padding:0 14px;cursor:pointer;font-size:14px}
 
 .sheet{position:absolute;inset:auto 0 0 0;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px));z-index:20;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.vgrid{display:grid;gap:12px}
+.vgrid label{min-width:3.5em}
+.vgrid select{flex:1;min-width:0;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:14px;padding:0 8px}
+.vgrid output{width:2.6em;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.vgrid .chips{margin-top:0}
+.chip.on{border-color:var(--teal);color:var(--teal)}
+.switch{width:22px;height:22px;accent-color:var(--teal)}
 .sheet h2{font-family:var(--display);font-weight:400;font-size:20px;margin:0 0 8px}
 .sheet ul{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:14px;line-height:1.45}
 .sheet li b{color:var(--teal);font-weight:400;font-family:var(--display);margin-right:6px}
@@ -163,7 +170,7 @@ button{font:inherit;color:inherit}
     <div class="tools">
       <button class="ibtn" id="btnCam" title="테라리움 사진 찍기" aria-label="사진 찍기"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg></button>
       <button class="ibtn" id="btnZoom" title="가까이 보기" aria-label="가까이 보기" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5"/></svg></button>
-      <button class="ibtn" id="btnSound" title="목소리 켜기/끄기" aria-label="목소리" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10z"/><path class="w" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/></svg></button>
+      <button class="ibtn" id="btnSound" title="목소리 설정" aria-label="목소리" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10z"/><path class="w" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/></svg></button>
       <button class="ibtn" id="btnHelp" title="놀이 방법" aria-label="놀이 방법"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.8 9.6a2.3 2.3 0 1 1 3.2 2.1c-.7.3-1 .8-1 1.5v.4M12 16.6v.2"/></svg></button>
     </div>
   </header>
@@ -263,6 +270,24 @@ button{font:inherit;color:inherit}
   <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
   <input type="file" id="fileAlbum" accept="image/*" hidden>
 
+  <div class="sheet" id="voiceSheet" hidden>
+    <h2>목소리</h2>
+    <div class="vgrid">
+      <div class="row"><label for="voiceOn">말하기</label><span style="flex:1"></span><input type="checkbox" id="voiceOn" class="switch"></div>
+      <div class="row"><label for="voiceSel">목소리</label><select id="voiceSel"></select></div>
+      <div class="chips" id="presets">
+        <button class="chip" type="button" data-p="1.15" data-r="1.0">귀엽게</button>
+        <button class="chip" type="button" data-p="1.0" data-r="0.95">자연스럽게</button>
+        <button class="chip" type="button" data-p="1.3" data-r="1.05">아이처럼</button>
+        <button class="chip" type="button" data-p="0.9" data-r="0.9">차분하게</button>
+      </div>
+      <div class="row"><label for="pitch">높이</label><input type="range" id="pitch" min="0.7" max="1.6" step="0.05"><output id="pitchOut"></output></div>
+      <div class="row"><label for="rate">빠르기</label><input type="range" id="rate" min="0.7" max="1.4" step="0.05"><output id="rateOut"></output></div>
+      <p class="note" id="voiceNote"></p>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="ghost" id="btnTry" type="button">들어보기</button><span style="flex:1"></span><button class="send" id="btnVoiceClose" type="button">완료</button></div>
+  </div>
+
   <div class="sheet" id="help" hidden>
     <h2>이슬이와 노는 법</h2>
     <ul>
@@ -288,7 +313,7 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ---------- saved state ---------- */
-const S = { name: "이슬이", mood: 70, photo: null, x: SAMPLE_POS.x, y: SAMPLE_POS.y, size: SAMPLE_POS.size, sound: true };
+const S = { name: "이슬이", mood: 70, photo: null, x: SAMPLE_POS.x, y: SAMPLE_POS.y, size: SAMPLE_POS.size, sound: true, voiceURI: "", pitch: 1.15, rate: 1.0 };
 try { Object.assign(S, JSON.parse(localStorage.getItem("terra-pet") || "{}")); } catch (e) {}
 function save() {
   try { localStorage.setItem("terra-pet", JSON.stringify(S)); }
@@ -390,10 +415,23 @@ function showBubble(html, { small = false, hold = 4000 } = {}) {
 function hideBubble() { bubble.classList.remove("show"); }
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let koVoice = null;
-function loadVoice() {
-  try { const vs = speechSynthesis.getVoices(); koVoice = vs.find((v) => /ko/i.test(v.lang)) || null; } catch (e) {}
+let koVoice = null, koVoices = [];
+function voiceScore(v) {
+  let sc = 0;
+  if (/google/i.test(v.name)) sc += 4;
+  if (/natural|neural|online|premium|enhanced/i.test(v.name)) sc += 3;
+  if (/samsung/i.test(v.name)) sc += 2;
+  if (v.localService === false) sc += 1;
+  return sc;
 }
+function loadVoice() {
+  try {
+    koVoices = speechSynthesis.getVoices().filter((v) => /^ko/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a));
+    koVoice = koVoices.find((v) => v.voiceURI === S.voiceURI) || koVoices[0] || null;
+    if (typeof fillVoices === "function") fillVoices();
+  } catch (e) {}
+}
+const ttsText = (t) => String(t).replace(/[~～]+/g, "").replace(/…+|\.{2,}/g, ", ").replace(/[!?]{2,}/g, (m) => m[0]).trim();
 if ("speechSynthesis" in window) { loadVoice(); speechSynthesis.onvoiceschanged = loadVoice; }
 let userActed = false;
 
@@ -415,9 +453,9 @@ function say(text, emotion = "neutral", { speak = true, small = false, after = "
   if (speak && S.sound && userActed && "speechSynthesis" in window) {
     try {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
+      const u = new SpeechSynthesisUtterance(ttsText(text));
       u.lang = "ko-KR"; if (koVoice) u.voice = koVoice;
-      u.pitch = 1.7; u.rate = 1.08;
+      u.pitch = S.pitch; u.rate = S.rate;
       u.onend = stop; u.onerror = stop;
       speechSynthesis.speak(u); spoke = true;
       setTimeout(stop, 8000);
@@ -656,12 +694,37 @@ micBtn.addEventListener("click", () => {
 /* ---------- toolbar ---------- */
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 3800); }
 $("#btnSound").setAttribute("aria-pressed", String(S.sound));
-$("#btnSound").addEventListener("click", (e) => {
-  S.sound = !S.sound; e.currentTarget.setAttribute("aria-pressed", String(S.sound)); save();
-  userActed = true;
-  if (!S.sound) try { speechSynthesis.cancel(); } catch (_) {}
-  toast(S.sound ? "목소리를 켰어요." : "목소리를 껐어요.");
-});
+function fillVoices() {
+  const sel = $("#voiceSel"); if (!sel) return;
+  sel.innerHTML = "";
+  if (!koVoices.length) { sel.innerHTML = "<option>기본 한국어 목소리</option>"; sel.disabled = true; }
+  else {
+    sel.disabled = false;
+    koVoices.forEach((v) => { const o = document.createElement("option"); o.value = v.voiceURI; o.textContent = v.name.replace(/^(Google|Samsung)\s*/i, "$1 ") ; sel.append(o); });
+    if (koVoice) sel.value = koVoice.voiceURI;
+  }
+  $("#voiceNote").textContent = koVoices.length > 1
+    ? "목소리마다 느낌이 달라요. 하나씩 골라 들어보세요."
+    : "이 폰에는 한국어 목소리가 하나뿐이에요. 설정 > 일반 > 텍스트 음성 변환에서 Google 음성 엔진의 한국어 음성을 받으면 더 자연스러워져요.";
+}
+function syncVoiceUI() {
+  $("#voiceOn").checked = S.sound;
+  $("#pitch").value = S.pitch; $("#pitchOut").textContent = (+S.pitch).toFixed(2);
+  $("#rate").value = S.rate; $("#rateOut").textContent = (+S.rate).toFixed(2);
+  document.querySelectorAll("#presets .chip").forEach((c) => c.classList.toggle("on", +c.dataset.p === +S.pitch && +c.dataset.r === +S.rate));
+  $("#btnSound").setAttribute("aria-pressed", String(S.sound));
+}
+function trySpeak() { userActed = true; if (S.sound) say(`안녕, 나는 ${S.name}야. 이 목소리 어때?`, "happy"); }
+$("#btnSound").addEventListener("click", () => { userActed = true; loadVoice(); fillVoices(); syncVoiceUI(); $("#voiceSheet").hidden = false; });
+$("#voiceOn").addEventListener("change", (e) => { S.sound = e.target.checked; if (!S.sound) try { speechSynthesis.cancel(); } catch (_) {} save(); syncVoiceUI(); });
+$("#voiceSel").addEventListener("change", (e) => { S.voiceURI = e.target.value; koVoice = koVoices.find((v) => v.voiceURI === S.voiceURI) || koVoice; save(); trySpeak(); });
+$("#pitch").addEventListener("input", (e) => { S.pitch = +e.target.value; save(); syncVoiceUI(); });
+$("#rate").addEventListener("input", (e) => { S.rate = +e.target.value; save(); syncVoiceUI(); });
+$("#pitch").addEventListener("change", trySpeak);
+$("#rate").addEventListener("change", trySpeak);
+$("#presets").addEventListener("click", (e) => { const c = e.target.closest(".chip"); if (!c) return; S.pitch = +c.dataset.p; S.rate = +c.dataset.r; save(); syncVoiceUI(); trySpeak(); });
+$("#btnTry").addEventListener("click", trySpeak);
+$("#btnVoiceClose").addEventListener("click", () => ($("#voiceSheet").hidden = true));
 $("#btnZoom").addEventListener("click", (e) => {
   const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
   e.currentTarget.setAttribute("aria-pressed", String(on));
@@ -737,7 +800,7 @@ scheduleBlink();
 
 let nextIdle = now() + 7000, nextSleepTalk = 0;
 setInterval(() => {
-  if (adjusting || busy || !$("#help").hidden) { lastTouch = Math.max(lastTouch, now() - 5000); return; }
+  if (adjusting || busy || !$("#help").hidden || !$("#voiceSheet").hidden) { lastTouch = Math.max(lastTouch, now() - 5000); return; }
   const idle = (now() - lastTouch) / 1000, t = now();
   if (mode === "awake" && idle > 25 && !talking) { setMode("drowsy"); say("하아암… 눈꺼풀이 무거워.", "sleepy", { speak: false, after: null }); }
   else if (mode === "drowsy" && idle > 42) { setMode("asleep"); hideBubble(); nextSleepTalk = t + 9000; }
